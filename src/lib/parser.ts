@@ -7,6 +7,22 @@ import { getHTML } from './requester';
 const starsRubricText = 'Звезды';
 const comsoURL = 'https://www.cosmo.ru';
 
+export enum SocialMedia {
+  Instagram = 'instagram.com',
+  Facebook = 'facebook.com',
+  Vkontakte = 'vk.com',
+  Other = 'other'
+}
+
+export interface Source {
+  href: string;
+  socialMedia: SocialMedia;
+}
+
+export interface ArticleData {
+  sources: Source[];
+}
+
 async function parse(): Promise<void> {
   const newsTextHTML = await getHTML(`${comsoURL}/news`);
   say('News HTML received');
@@ -31,11 +47,37 @@ async function parse(): Promise<void> {
     starsLinks.map(link => getHTML(link))
   );
   const articles = articlesTextHTML.map(text =>
-    new JSDOM(text).window.document.body.querySelector('article-itself')
+    new JSDOM(text).window.document.body.querySelector('.article-itself')
   );
-  say(`${articles.length} articles received`);
+  say(`${articles.length} article${articles.length > 1 ? 's' : ''} received`);
 
-  console.log(articles.length);
+  const articlesDataRaw = articles.map(a => parseArticle(a));
+  const articlesData = articlesDataRaw
+    .map(({ sources }) => ({
+      sources: sources.filter(
+        ({ socialMedia }) => socialMedia !== SocialMedia.Other
+      )
+    }))
+    .filter(({ sources }) => sources.length);
+
+  say(
+    `Articles parsed. ${articlesData.length}/${articlesDataRaw.length} has appropriate social media hrefs`
+  );
+}
+
+function parseArticle(article: Element): ArticleData {
+  return {
+    sources: Array.from(article.querySelectorAll('.embed-source'))
+      .map(div => div.textContent)
+      .map(href => ({ href, socialMedia: extractSocialMedia(href) }))
+  };
+}
+
+function extractSocialMedia(str: string): SocialMedia {
+  return Object.entries(SocialMedia).reduce(
+    (acc, [key, value]) => (str.includes(value) ? SocialMedia[key] : acc),
+    SocialMedia.Other
+  );
 }
 
 parse();

@@ -1,7 +1,16 @@
-const startTime = Date.now();
+// tslint:disable:no-expression-statement no-let
 
-export function say(message: string, withTime = true): void {
-  console.log(message, withTime ? `${ms2s(Date.now() - startTime)}ms` : '');
+const startTime = Date.now();
+let lastTime = startTime;
+
+say('start');
+
+export function say(message: string): void {
+  const totalElapsed = Date.now() - startTime;
+  const currentElapsed = Date.now() - lastTime;
+  console.log(`${ms2s(totalElapsed)}s [${ms2s(currentElapsed)}s]: ${message}`);
+
+  lastTime = Date.now();
 }
 
 function ms2s(ms: number): number {

@@ -13,9 +13,9 @@
     "typedef": [true, "call-signature"],
 
     // Immutability rules
-    "readonly-keyword": true,
-    "readonly-array": true,
-    "no-let": true,
+    // "readonly-keyword": true,
+    // "readonly-array": true,
+    "no-array-mutation": true,
     "no-object-mutation": true,
     "no-delete": true,
     "no-method-signature": true,
