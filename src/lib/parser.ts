@@ -21,6 +21,7 @@ export interface Source {
 
 export interface ArticleData {
   sources: Source[];
+  cosmoLikes: number;
 }
 
 async function parse(): Promise<void> {
@@ -52,8 +53,9 @@ async function parse(): Promise<void> {
   say(`${articles.length} article${articles.length > 1 ? 's' : ''} received`);
 
   const articlesDataRaw = articles.map(a => parseArticle(a));
-  const articlesData = articlesDataRaw
-    .map(({ sources }) => ({
+  const articlesData: ArticleData[] = articlesDataRaw
+    .map(({ sources, cosmoLikes }) => ({
+      cosmoLikes,
       sources: sources.filter(
         ({ socialMedia }) => socialMedia !== SocialMedia.Other
       )
@@ -67,9 +69,16 @@ async function parse(): Promise<void> {
 
 function parseArticle(article: Element): ArticleData {
   return {
+    cosmoLikes: parseInt(
+      article.querySelector('.btn-like-span').textContent,
+      10
+    ),
     sources: Array.from(article.querySelectorAll('.embed-source'))
       .map(div => div.textContent)
-      .map(href => ({ href, socialMedia: extractSocialMedia(href) }))
+      .map(href => ({
+        href,
+        socialMedia: extractSocialMedia(href)
+      }))
   };
 }
 
