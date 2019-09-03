@@ -1,5 +1,10 @@
 {
-  "typescript.tsdk": "node_modules/typescript/lib"
-  // "typescript.implementationsCodeLens.enabled": true
-  // "typescript.referencesCodeLens.enabled": true
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "todohighlight.keywords": [
+    {
+      "text": "WARNING:",
+      "color": "#d6d5c9",
+      "backgroundColor": "#453f0f"
+    }
+  ]
 }

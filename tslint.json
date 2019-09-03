@@ -16,7 +16,7 @@
     // "readonly-keyword": true,
     // "readonly-array": true,
     "no-array-mutation": true,
-    "no-object-mutation": true,
+    // "no-object-mutation": true,
     "no-delete": true,
     "no-method-signature": true,
 
@@ -24,13 +24,14 @@
     "no-this": true,
     "no-class": true,
     "no-mixed-interface": true,
-    "no-expression-statement": [
-      true,
-      { "ignore-prefix": ["console.", "process.exit"] }
-    ],
-    "no-if-statement": true,
+    // "no-expression-statement": [
+    //   true,
+    //   { "ignore-prefix": ["console.", "process.exit"] }
+    // ],
+    // "no-if-statement": true,
     /* end tslint-immutable rules */
 
-    "no-console": false
+    "no-console": false,
+    "curly": [true, "as-needed"]
   }
 }
