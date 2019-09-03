@@ -56,6 +56,7 @@ async function loadNextSection(): Promise<void> {
   const { body } = dom.window.document;
   const newsSections = Array.from(body.querySelectorAll('.news-section'));
   console.log(body.querySelector('.discussed-news-div'));
+  console.log(body.querySelector('.section-3cols'));
   console.log('sectionsCount:', newsSections.length);
 }
 

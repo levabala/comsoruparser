@@ -17,6 +17,7 @@ export function getHTML(address: string): Promise<string> {
     console.log(address);
 
     xhr.open('GET', address);
+    xhr.setDisableHeaderCheck(true);
     xhr.send();
   });
 }
