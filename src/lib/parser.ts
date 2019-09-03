@@ -41,6 +41,11 @@ async function parse(): Promise<ArticleData[]> {
   say('News HTML received');
 
   const dom = new JSDOM(newsTextHTML);
+
+  const sectionIdReg = /'\/article\/getSection\/\?sectionId=.[^']*/;
+  const sectionIdRequestString = sectionIdReg.exec(newsTextHTML);
+  console.log(sectionIdRequestString);
+
   const allNewsBlocks = Array.from(
     dom.window.document.body.querySelectorAll('.news-section-link')
   );
@@ -120,7 +125,6 @@ function parseArticle(article: Element, href: string): ArticleData {
         socialMedia: extractSocialMedia(page)
       };
 
-      console.log(output);
       return output;
     })
   };
