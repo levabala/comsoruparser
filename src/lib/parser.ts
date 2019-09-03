@@ -36,15 +36,40 @@ export interface ArticleData {
   href: string;
 }
 
+async function loadNextSection(): Promise<void> {
+  const newsTextHTML = await getHTML(`${comsoURL}/news`);
+  say('News HTML received');
+
+  const sectionIdReg = /'\/article\/getSection\/\?sectionId=.[^']*/;
+  const [sectionIdRequestString] = sectionIdReg.exec(newsTextHTML);
+  console.log(sectionIdRequestString);
+
+  const newTextHTML = await getHTML(
+    encodeURI(
+      `${comsoURL}${sectionIdRequestString.slice(
+        1,
+        sectionIdRequestString.length
+      )}`
+    )
+  );
+  const dom = new JSDOM(newTextHTML);
+  const newsSections = Array.from(
+    dom.window.document.body.querySelectorAll('.news-section')
+  );
+  console.log('sectionsCount:', newsSections.length);
+}
+
 async function parse(): Promise<ArticleData[]> {
   const newsTextHTML = await getHTML(`${comsoURL}/news`);
   say('News HTML received');
 
   const dom = new JSDOM(newsTextHTML);
 
-  const sectionIdReg = /'\/article\/getSection\/\?sectionId=.[^']*/;
-  const sectionIdRequestString = sectionIdReg.exec(newsTextHTML);
-  console.log(sectionIdRequestString);
+  const sectionIdReg = /\/article\/getSection\/\?sectionId=.[^']*/;
+  const [sectionIdRequestString] = sectionIdReg.exec(newsTextHTML);
+
+  const newTextHTML = await getHTML(sectionIdRequestString);
+  console.log(newTextHTML);
 
   const allNewsBlocks = Array.from(
     dom.window.document.body.querySelectorAll('.news-section-link')
@@ -168,4 +193,6 @@ async function justDoIt(): Promise<void> {
   saveArticlesDataToDisk(data);
 }
 
-justDoIt();
+// justDoIt();
+
+loadNextSection();
