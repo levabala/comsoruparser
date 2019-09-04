@@ -72,11 +72,6 @@ function getPageViaHorseman(): Horseman.HorsemanPromise<void> & Horseman {
   });
 
   return h;
-  // const { body } = dom.window.document;
-  // const newsSections = Array.from(body.querySelectorAll('.news-section'));
-  // console.log(body.querySelector('.discussed-news-div'));
-  // console.log(body.querySelector('.section-3cols'));
-  // console.log('sectionsCount:', newsSections.length);
 }
 
 async function parse(
@@ -98,8 +93,6 @@ async function parse(
     .map(a => a.getAttribute('href'))
     .map(link => `${comsoURL}${link}`)
     .filter(link => !excludeHrefs.includes(link));
-  // temporary we'll use only 1 aritcle
-  // .slice(0, 1);
 
   say(
     `${starsLinks.length}/${starsNewsBlocks.length} links will be processed (it may take a while)`
