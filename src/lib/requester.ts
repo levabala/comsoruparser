@@ -7,17 +7,17 @@ export function getHTML(address: string): Promise<string> {
     const xhr = new XMLHttpRequest();
     xhr.onreadystatechange = () => {
       if (xhr.readyState === 4 && xhr.status === 200) resolve(xhr.responseText);
-      console.log(xhr.status);
+      // console.log(xhr.status);
     };
     xhr.onerror = () => {
       reject();
     };
 
     // say(`Requesting ${address}`);
-    console.log(address);
+    // console.log(address);
 
     xhr.open('GET', address);
-    xhr.setDisableHeaderCheck(true);
+    // xhr.setDisableHeaderCheck(true);
     xhr.send();
   });
 }

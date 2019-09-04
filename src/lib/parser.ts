@@ -1,5 +1,6 @@
 import { existsSync, promises, writeFileSync } from 'fs';
 import { JSDOM } from 'jsdom';
+import Horseman from 'node-horseman';
 
 import { say } from './print';
 import { getHTML } from './requester';
@@ -36,6 +37,68 @@ export interface ArticleData {
   href: string;
 }
 
+// async function scrollSections(horseman: Horseman, sections: number) : Horseman {
+//   let scrolled = 0;
+//   let h = horseman;
+//   while (scrolled < sections)
+//     h = await horseman.scrollTo(10e6, 0).do(done => {
+//       setTimeout(done, 500);
+//       return;
+//     });
+// }
+
+async function getDOMviaHorseman(): Promise<JSDOM> {
+  const scrollMax = 10e7;
+  const scrollWaitTime = 2000;
+  const horseman = new Horseman(undefined);
+  const waiter = done => {
+    setTimeout(done, scrollWaitTime);
+    say('Scrolled section');
+  };
+
+  say('Getting page via Horseman');
+
+  const h = await horseman
+    .open(`${comsoURL}/news`)
+    .do(done => {
+      say('Page downloaded');
+      done();
+    })
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .scrollTo(scrollMax, 0)
+    .do(waiter)
+    .html();
+
+  const dom = new JSDOM(h);
+  return dom;
+  // const { body } = dom.window.document;
+  // const newsSections = Array.from(body.querySelectorAll('.news-section'));
+  // console.log(body.querySelector('.discussed-news-div'));
+  // console.log(body.querySelector('.section-3cols'));
+  // console.log('sectionsCount:', newsSections.length);
+}
+
 async function loadNextSection(): Promise<void> {
   const newsTextHTML = await getHTML(`${comsoURL}/news`);
   say('News HTML received');
@@ -52,6 +115,7 @@ async function loadNextSection(): Promise<void> {
       )}`
     )
   );
+
   const dom = new JSDOM(newTextHTML);
   const { body } = dom.window.document;
   const newsSections = Array.from(body.querySelectorAll('.news-section'));
@@ -60,18 +124,7 @@ async function loadNextSection(): Promise<void> {
   console.log('sectionsCount:', newsSections.length);
 }
 
-async function parse(): Promise<ArticleData[]> {
-  const newsTextHTML = await getHTML(`${comsoURL}/news`);
-  say('News HTML received');
-
-  const dom = new JSDOM(newsTextHTML);
-
-  const sectionIdReg = /\/article\/getSection\/\?sectionId=.[^']*/;
-  const [sectionIdRequestString] = sectionIdReg.exec(newsTextHTML);
-
-  const newTextHTML = await getHTML(sectionIdRequestString);
-  console.log(newTextHTML);
-
+async function parse(dom: JSDOM): Promise<ArticleData[]> {
   const allNewsBlocks = Array.from(
     dom.window.document.body.querySelectorAll('.news-section-link')
   );
@@ -81,17 +134,27 @@ async function parse(): Promise<ArticleData[]> {
     return rubric.textContent.includes(starsRubricText);
   });
 
+  say(`${starsNewsBlocks.length} stars blocks found`);
+
   const starsLinks = starsNewsBlocks
     .map(a => a.getAttribute('href'))
     .map(link => `${comsoURL}${link}`);
   // temporary we'll use only 1 aritcle
   // .slice(0, 1);
 
+  say(`${starsLinks.length} links will be processed`);
+
+  let left = starsLinks.length;
   const articlesTextHTML: Array<{
     html: string;
     href: string;
   }> = await Promise.all(
-    starsLinks.map(async href => ({ html: await getHTML(href), href }))
+    starsLinks.map(async (href, i) => {
+      const html = await getHTML(href);
+      left--;
+      say(`Link ${i} loaded (${left} left)`);
+      return { html, href };
+    })
   );
   const articles: Array<{
     article: Element;
@@ -190,10 +253,15 @@ async function saveArticlesDataToDisk(data: ArticleData[]): Promise<void> {
 }
 
 async function justDoIt(): Promise<void> {
-  const data = await parse();
-  saveArticlesDataToDisk(data);
+  const dom = await getDOMviaHorseman();
+  const data = await parse(dom);
+  await saveArticlesDataToDisk(data);
+
+  say('DONE');
 }
 
-// justDoIt();
+justDoIt();
 
-loadNextSection();
+// loadNextSection();
+
+// getDOMviaHorseman();

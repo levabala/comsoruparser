@@ -54,12 +54,15 @@
   "dependencies": {
     "@types/jsdom": "^12.2.4",
     "jsdom": "^15.1.1",
+    "node-horseman": "^3.3.0",
+    "phantomjs-prebuilt": "^2.1.16",
     "sha.js": "^2.4.11",
     "ts-node": "^8.3.0",
     "xmlhttprequest-ts": "^1.0.1"
   },
   "devDependencies": {
     "@bitjson/npm-scripts-info": "^1.0.0",
+    "@types/node-horseman": "legion44/typed-node-horseman",
     "ava": "2.2.0",
     "codecov": "^3.5.0",
     "cz-conventional-changelog": "^2.1.0",
