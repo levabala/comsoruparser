@@ -8,7 +8,11 @@ say('start');
 export function say(message: string): void {
   const totalElapsed = Date.now() - startTime;
   const currentElapsed = Date.now() - lastTime;
-  console.log(`${ms2s(totalElapsed)}s [${ms2s(currentElapsed)}s]: ${message}`);
+  console.log(
+    `${ms2s(totalElapsed).toFixed(2)}s [${ms2s(currentElapsed).toFixed(
+      2
+    )}s]: ${message}`
+  );
 
   lastTime = Date.now();
 }

@@ -74,20 +74,20 @@ async function getDOMviaHorseman(): Promise<JSDOM> {
     .do(waiter)
     .scrollTo(scrollMax, 0)
     .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
+    // .scrollTo(scrollMax, 0)
+    // .do(waiter)
     .html();
 
   const dom = new JSDOM(h);
@@ -142,20 +142,55 @@ async function parse(dom: JSDOM): Promise<ArticleData[]> {
   // temporary we'll use only 1 aritcle
   // .slice(0, 1);
 
-  say(`${starsLinks.length} links will be processed`);
+  say(`${starsLinks.length} links will be processed (it may take a while)`);
 
+  const blockSize = 10;
   let left = starsLinks.length;
+
+  const blocks = starsLinks.reduce(
+    (acc: string[][], val) => {
+      const lastBlock = acc[acc.length - 1];
+      const newBlockNecessity = lastBlock.length > blockSize;
+      const lastBlockActual = newBlockNecessity ? [] : lastBlock;
+
+      const tail = newBlockNecessity ? acc.slice(0) : acc.slice(0, -1);
+
+      return [...tail, [...lastBlockActual, val]];
+    },
+    [[]]
+  );
+
+  const executeBlock = async (block: string[], blockIndex: number) => {
+    say(`Request block ${blockIndex}`);
+    return Promise.all(
+      block
+        .map(async (href, i) => {
+          try {
+            const html = await getHTML(href);
+
+            if (!html) throw new Error('just error');
+
+            left--;
+            say(`Link ${i} loaded (${left} left)`);
+            return { html, href };
+          } catch (e) {
+            return null;
+          }
+        })
+        .filter(a => a)
+    );
+  };
+
+  const tasks = blocks.map((block, i) => () => executeBlock(block, i));
+
   const articlesTextHTML: Array<{
     html: string;
     href: string;
-  }> = await Promise.all(
-    starsLinks.map(async (href, i) => {
-      const html = await getHTML(href);
-      left--;
-      say(`Link ${i} loaded (${left} left)`);
-      return { html, href };
-    })
-  );
+  }> = await tasks.reduce((lastTask, task) => {
+    const r = lastTask().then(() => task());
+    return () => r;
+  })();
+
   const articles: Array<{
     article: Element;
     href: string;

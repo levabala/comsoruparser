@@ -12,6 +12,12 @@ export function getHTML(address: string): Promise<string> {
     xhr.onerror = () => {
       reject();
     };
+    xhr.ontimeout = () => {
+      xhr.abort();
+      reject();
+    };
+
+    xhr.timeout = 10000;
 
     // say(`Requesting ${address}`);
     // console.log(address);
