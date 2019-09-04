@@ -14,7 +14,7 @@ const comsoURL = 'https://www.cosmo.ru';
 const dataPath = 'data';
 const storeArticlesFileName = 'parsedArticles.json';
 const storeArticlesPath = `${dataPath}/${storeArticlesFileName}`;
-const sectionsToScroll = 100;
+const sectionsToScroll = 80;
 const blockSize = 20;
 
 export enum SocialMedia {
@@ -164,12 +164,17 @@ async function parse(
   const articles: Array<{
     article: Element;
     href: string;
-  }> = articlesTextHTML.map(({ html, href }) => ({
-    article: new JSDOM(html).window.document.body.querySelector(
-      '.article-layout'
-    ),
-    href
-  }));
+  }> = articlesTextHTML.map(({ html, href }, i, arr) => {
+    if (i % Math.floor(arr.length / 10) === 0)
+      say(`${i} (${Math.round((i / arr.length) * 100)}%) articles processed`);
+
+    return {
+      article: new JSDOM(html).window.document.body.querySelector(
+        '.article-layout'
+      ),
+      href
+    };
+  });
 
   say('Converting to DOM completed. Parsing started');
 
