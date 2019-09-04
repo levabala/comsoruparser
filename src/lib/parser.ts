@@ -11,10 +11,11 @@ const { readFile, writeFile } = promises;
 const starsRubricText = 'Звезды';
 const comsoURL = 'https://www.cosmo.ru';
 
-console.log(__dirname);
 const dataPath = 'data';
 const storeArticlesFileName = 'parsedArticles.json';
 const storeArticlesPath = `${dataPath}/${storeArticlesFileName}`;
+const sectionsToScroll = 100;
+const blockSize = 20;
 
 export enum SocialMedia {
   Instagram = 'instagram.com',
@@ -37,60 +38,40 @@ export interface ArticleData {
   href: string;
 }
 
-// async function scrollSections(horseman: Horseman, sections: number) : Horseman {
-//   let scrolled = 0;
-//   let h = horseman;
-//   while (scrolled < sections)
-//     h = await horseman.scrollTo(10e6, 0).do(done => {
-//       setTimeout(done, 500);
-//       return;
-//     });
-// }
+function scrollSections(
+  horseman: Horseman.HorsemanPromise<void> & Horseman
+): Horseman.HorsemanPromise<void> & Horseman {
+  const scrollWaitTime = 1500;
+  const scrollMax = 10e7;
+  let scrolled = 0;
+
+  const waiter = (done, i) => {
+    say(`Scrolled section ${i}/${sectionsToScroll}`);
+    setTimeout(done, scrollWaitTime);
+  };
+
+  let h: Horseman.HorsemanPromise<void> & Horseman = horseman;
+  while (scrolled++ < sectionsToScroll) {
+    const s = scrolled;
+    h = h.scrollTo(scrollMax, 0).do(done => waiter(done, s));
+  }
+  return h;
+}
 
 async function getDOMviaHorseman(): Promise<JSDOM> {
-  const scrollMax = 10e7;
-  const scrollWaitTime = 2000;
   const horseman = new Horseman(undefined);
-  const waiter = done => {
-    setTimeout(done, scrollWaitTime);
-    say('Scrolled section');
-  };
 
   say('Getting page via Horseman');
 
-  const h = await horseman
-    .open(`${comsoURL}/news`)
-    .do(done => {
-      say('Page downloaded');
-      done();
-    })
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    .scrollTo(scrollMax, 0)
-    .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    // .scrollTo(scrollMax, 0)
-    // .do(waiter)
-    .html();
+  const h = horseman.open(`${comsoURL}/news`).do(done => {
+    say('Page downloaded');
+    done();
+  });
 
-  const dom = new JSDOM(h);
+  const p = scrollSections(h);
+  const html = await p.html();
+
+  const dom = new JSDOM(html);
   return dom;
   // const { body } = dom.window.document;
   // const newsSections = Array.from(body.querySelectorAll('.news-section'));
@@ -99,32 +80,10 @@ async function getDOMviaHorseman(): Promise<JSDOM> {
   // console.log('sectionsCount:', newsSections.length);
 }
 
-async function loadNextSection(): Promise<void> {
-  const newsTextHTML = await getHTML(`${comsoURL}/news`);
-  say('News HTML received');
-
-  const sectionIdReg = /'\/article\/getSection\/\?sectionId=.[^']*/;
-  const [sectionIdRequestString] = sectionIdReg.exec(newsTextHTML);
-  console.log(sectionIdRequestString);
-
-  const newTextHTML = await getHTML(
-    encodeURI(
-      `${comsoURL}${sectionIdRequestString.slice(
-        1,
-        sectionIdRequestString.length
-      )}`
-    )
-  );
-
-  const dom = new JSDOM(newTextHTML);
-  const { body } = dom.window.document;
-  const newsSections = Array.from(body.querySelectorAll('.news-section'));
-  console.log(body.querySelector('.discussed-news-div'));
-  console.log(body.querySelector('.section-3cols'));
-  console.log('sectionsCount:', newsSections.length);
-}
-
-async function parse(dom: JSDOM): Promise<ArticleData[]> {
+async function parse(
+  dom: JSDOM,
+  excludeHrefs: string[] = []
+): Promise<ArticleData[]> {
   const allNewsBlocks = Array.from(
     dom.window.document.body.querySelectorAll('.news-section-link')
   );
@@ -138,13 +97,15 @@ async function parse(dom: JSDOM): Promise<ArticleData[]> {
 
   const starsLinks = starsNewsBlocks
     .map(a => a.getAttribute('href'))
-    .map(link => `${comsoURL}${link}`);
+    .map(link => `${comsoURL}${link}`)
+    .filter(link => !excludeHrefs.includes(link));
   // temporary we'll use only 1 aritcle
   // .slice(0, 1);
 
-  say(`${starsLinks.length} links will be processed (it may take a while)`);
+  say(
+    `${starsLinks.length}/${starsNewsBlocks.length} links will be processed (it may take a while)`
+  );
 
-  const blockSize = 10;
   let left = starsLinks.length;
 
   const blocks = starsLinks.reduce(
@@ -186,10 +147,19 @@ async function parse(dom: JSDOM): Promise<ArticleData[]> {
   const articlesTextHTML: Array<{
     html: string;
     href: string;
-  }> = await tasks.reduce((lastTask, task) => {
-    const r = lastTask().then(() => task());
+  }> = (await tasks.reduce((lastTask, task) => {
+    const r = lastTask().then(async data => {
+      const newData = await task();
+      return [...data, ...newData];
+    });
     return () => r;
-  })();
+  })()).filter(a => !!a && a.href && a.html);
+
+  say(
+    `${articlesTextHTML.length} article${
+      articlesTextHTML.length > 1 ? 's' : ''
+    } received. Processing started`
+  );
 
   const articles: Array<{
     article: Element;
@@ -201,11 +171,14 @@ async function parse(dom: JSDOM): Promise<ArticleData[]> {
     href
   }));
 
-  say(`${articles.length} article${articles.length > 1 ? 's' : ''} received`);
+  say('Converting to DOM completed. Parsing started');
 
   const articlesDataRaw = articles.map(({ href, article }) =>
     parseArticle(article, href)
   );
+
+  say('Parsing completed. Filtering started');
+
   const articlesData: ArticleData[] = articlesDataRaw
     .map(article => ({
       ...article,
@@ -261,36 +234,53 @@ function extractSocialMedia(str: string): SocialMedia {
   );
 }
 
-async function saveArticlesDataToDisk(data: ArticleData[]): Promise<void> {
-  // check if file exists
-  if (!existsSync(storeArticlesPath)) writeFileSync(storeArticlesPath, '{}');
-
-  // we use an article's href as key
+async function readArticlesData(): Promise<Record<string, ArticleData>> {
   const alreadyStoredArticles = JSON.parse(
     (await readFile(storeArticlesPath, { encoding: 'utf-8' })) || '{}'
   );
 
-  say('Articles store file was read');
+  return alreadyStoredArticles;
+}
 
-  const newArticles = data.reduce(
+async function saveArticlesDataToDisk(
+  oldData: Record<string, ArticleData>,
+  newData: ArticleData[]
+): Promise<void> {
+  // check if file exists
+  if (!existsSync(storeArticlesPath)) writeFileSync(storeArticlesPath, '{}');
+
+  say('Starting reading articles store file');
+
+  say(
+    `Articles store file was read (contains ${
+      Object.keys(oldData).length
+    } articles)`
+  );
+
+  // we use an article's href as key
+  const newArticles = newData.reduce(
     (acc, val) => ({ ...acc, [val.href]: val }),
     {}
   );
 
   const newStoredArticlesJSON = JSON.stringify({
-    ...alreadyStoredArticles,
+    ...oldData,
     ...newArticles
   });
 
   await writeFile(storeArticlesPath, newStoredArticlesJSON);
 
-  say('Articles store file was updated');
+  say(
+    `Articles store file was updated (contains ${Object.keys(newArticles)
+      .length + Object.keys(oldData).length} articles)`
+  );
 }
 
 async function justDoIt(): Promise<void> {
   const dom = await getDOMviaHorseman();
-  const data = await parse(dom);
-  await saveArticlesDataToDisk(data);
+  const oldData = await readArticlesData();
+  const newData = await parse(dom, Object.keys(oldData));
+  await saveArticlesDataToDisk(oldData, newData);
 
   say('DONE');
 }

@@ -9,7 +9,7 @@
   "license": "MIT",
   "keywords": [],
   "scripts": {
-    "e": "ts-node src/lib/parser.ts",
+    "e": "node --no-warnings --max_old_space_size=8192 -r ts-node/register ./src/lib/parser.ts",
     "describe": "npm-scripts-info",
     "build": "run-s clean && run-p build:*",
     "build:main": "tsc -p tsconfig.json",
