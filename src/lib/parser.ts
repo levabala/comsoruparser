@@ -14,6 +14,9 @@ const comsoURL = 'https://www.cosmo.ru';
 const dataPath = 'data';
 const storeArticlesFileName = 'parsedArticles.json';
 const storeArticlesPath = `${dataPath}/${storeArticlesFileName}`;
+const excludedLinksFileName = 'excludedArticles.json';
+const excludedLinksPath = `${dataPath}/${excludedLinksFileName}`;
+
 const blockSize = 20;
 
 export enum SocialMedia {
@@ -41,7 +44,7 @@ function scrollSections(
   horseman: Horseman.HorsemanPromise<void> & Horseman,
   sectionsToScroll: number
 ): Horseman.HorsemanPromise<void> & Horseman {
-  const scrollWaitTime = 1500;
+  const scrollWaitTime = 100;
   const scrollMax = 10e7;
   let scrolled = 0;
 
@@ -79,7 +82,7 @@ function getPageViaHorseman(): Horseman.HorsemanPromise<void> & Horseman {
 async function parse(
   dom: JSDOM,
   excludeHrefs: string[] = []
-): Promise<ArticleData[]> {
+): Promise<{ articlesData: ArticleData[]; excluded: string[] }> {
   const allNewsBlocks = Array.from(
     dom.window.document.body.querySelectorAll('.news-section-link')
   );
@@ -118,10 +121,11 @@ async function parse(
   );
 
   const executeBlock = async (block: string[], blockIndex: number) => {
-    say(`Request block ${blockIndex} (${0}/${block.length})`);
+    // say(`Request block ${blockIndex} (${0}/${block.length})`);
+    say(`Request block ${blockIndex}`);
     return Promise.all(
       block
-        .map(async (href, i) => {
+        .map(async href => {
           try {
             const html = await getHTML(href);
 
@@ -197,7 +201,14 @@ async function parse(
     `Articles parsed. ${articlesData.length}/${articlesDataRaw.length} have appropriate social media hrefs`
   );
 
-  return articlesData;
+  const included = articlesData.map(({ href }) => href);
+  const excluded = starsLinks.filter(link => !included.includes(link));
+
+  say(
+    `Included ${included.length}/${excluded.length} (${excluded.length} excluded)`
+  );
+
+  return { articlesData, excluded };
 }
 
 function parseArticle(article: Element, href: string): ArticleData {
@@ -240,11 +251,40 @@ function extractSocialMedia(str: string): SocialMedia {
 }
 
 async function readArticlesData(): Promise<Record<string, ArticleData>> {
+  if (!existsSync(storeArticlesPath)) writeFileSync(storeArticlesPath, '{}');
+
   const alreadyStoredArticles = JSON.parse(
     (await readFile(storeArticlesPath, { encoding: 'utf-8' })) || '{}'
   );
 
   return alreadyStoredArticles;
+}
+
+async function readExludedData(): Promise<string[]> {
+  if (!existsSync(excludedLinksPath)) writeFileSync(excludedLinksPath, '[]');
+
+  const excludedArticles = JSON.parse(
+    (await readFile(excludedLinksPath, { encoding: 'utf-8' })) || '[]'
+  );
+
+  return excludedArticles;
+}
+
+async function saveExcludedLinksDataToDisk(
+  oldExcluded: string[],
+  newExcluded: string[]
+): Promise<void> {
+  if (!existsSync(excludedLinksPath)) writeFileSync(excludedLinksPath, '{}');
+
+  say('Mixing old&new excluded links');
+  const excluded = Array.from(new Set([...oldExcluded, ...newExcluded]));
+  const excludedStr = JSON.stringify(excluded);
+
+  say('Writing excluded links to disk');
+
+  await writeFile(excludedLinksPath, excludedStr);
+
+  say(`Writing done (${excluded.length} links are excluded)`);
 }
 
 async function saveArticlesDataToDisk(
@@ -276,28 +316,42 @@ async function saveArticlesDataToDisk(
   await writeFile(storeArticlesPath, newStoredArticlesJSON);
 
   say(
-    `Articles store file was updated (contains ${Object.keys(newArticles)
-      .length + Object.keys(oldData).length} articles)`
+    `Articles store file was updated (contains ${
+      Object.keys({
+        ...oldData,
+        ...newArticles
+      }).length
+    } articles)`
   );
 }
 
 async function processNextData(
   page: Horseman.HorsemanPromise<void> & Horseman
 ): Promise<void> {
-  const updatedPage = scrollSections(page, 10);
+  const updatedPage = scrollSections(page, 30);
   const html = await updatedPage.html();
   const dom = new JSDOM(html);
 
-  const oldData = await readArticlesData();
-  const newData = await parse(dom, Object.keys(oldData));
+  try {
+    const oldData = await readArticlesData();
+    const oldExcluded = [...(await readExludedData()), ...Object.keys(oldData)];
+    const { articlesData: newData, excluded } = await parse(dom, oldExcluded);
 
-  await saveArticlesDataToDisk(oldData, newData);
+    const newExcluded = Array.from(
+      new Set([...newData.map(({ href }) => href), ...excluded])
+    );
+
+    await saveArticlesDataToDisk(oldData, newData);
+    await saveExcludedLinksDataToDisk(oldExcluded, newExcluded);
+  } catch (e) {
+    say(e);
+  }
 }
 
 async function justDoIt(): Promise<void> {
   const page = getPageViaHorseman();
 
-  let count = 500;
+  let count = 5500;
 
   while (count--) await processNextData(page);
 
