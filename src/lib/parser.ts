@@ -14,7 +14,6 @@ const comsoURL = 'https://www.cosmo.ru';
 const dataPath = 'data';
 const storeArticlesFileName = 'parsedArticles.json';
 const storeArticlesPath = `${dataPath}/${storeArticlesFileName}`;
-const sectionsToScroll = 80;
 const blockSize = 20;
 
 export enum SocialMedia {
@@ -39,7 +38,8 @@ export interface ArticleData {
 }
 
 function scrollSections(
-  horseman: Horseman.HorsemanPromise<void> & Horseman
+  horseman: Horseman.HorsemanPromise<void> & Horseman,
+  sectionsToScroll: number
 ): Horseman.HorsemanPromise<void> & Horseman {
   const scrollWaitTime = 1500;
   const scrollMax = 10e7;
@@ -58,7 +58,7 @@ function scrollSections(
   return h;
 }
 
-async function getDOMviaHorseman(): Promise<JSDOM> {
+function getPageViaHorseman(): Horseman.HorsemanPromise<void> & Horseman {
   const horseman = new Horseman(undefined);
 
   say('Getting page via Horseman');
@@ -68,11 +68,7 @@ async function getDOMviaHorseman(): Promise<JSDOM> {
     done();
   });
 
-  const p = scrollSections(h);
-  const html = await p.html();
-
-  const dom = new JSDOM(html);
-  return dom;
+  return h;
   // const { body } = dom.window.document;
   // const newsSections = Array.from(body.querySelectorAll('.news-section'));
   // console.log(body.querySelector('.discussed-news-div'));
@@ -122,7 +118,7 @@ async function parse(
   );
 
   const executeBlock = async (block: string[], blockIndex: number) => {
-    say(`Request block ${blockIndex}`);
+    say(`Request block ${blockIndex} (${0}/${block.length})`);
     return Promise.all(
       block
         .map(async (href, i) => {
@@ -132,7 +128,11 @@ async function parse(
             if (!html) throw new Error('just error');
 
             left--;
-            say(`Link ${i} loaded (${left} left)`);
+
+            // say(`Link ${i} loaded (${left} left)`);
+            // up();
+            // say(`Request block ${blockIndex} (${i}/${block.length})`);
+
             return { html, href };
           } catch (e) {
             return null;
@@ -281,11 +281,25 @@ async function saveArticlesDataToDisk(
   );
 }
 
-async function justDoIt(): Promise<void> {
-  const dom = await getDOMviaHorseman();
+async function processNextData(
+  page: Horseman.HorsemanPromise<void> & Horseman
+): Promise<void> {
+  const updatedPage = scrollSections(page, 10);
+  const html = await updatedPage.html();
+  const dom = new JSDOM(html);
+
   const oldData = await readArticlesData();
   const newData = await parse(dom, Object.keys(oldData));
+
   await saveArticlesDataToDisk(oldData, newData);
+}
+
+async function justDoIt(): Promise<void> {
+  const page = getPageViaHorseman();
+
+  let count = 500;
+
+  while (count--) await processNextData(page);
 
   say('DONE');
 }

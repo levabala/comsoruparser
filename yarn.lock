@@ -355,11 +355,6 @@
   resolved "https://registry.yarnpkg.com/@types/minimatch/-/minimatch-3.0.3.tgz#3dca0e3f33b200fc7d1139c0cd96c1268cadfd9d"
   integrity sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==
 
-"@types/node-horseman@^3.3.1":
-  version "3.3.1"
-  resolved "https://registry.yarnpkg.com/@types/node-horseman/-/node-horseman-3.3.1.tgz#bdaf67d2782829a4ddd5c6212beb093b65bf4367"
-  integrity sha512-S3zZJfwi7+085ZV/qKEP/p6AZ7F2a4Xd4LuqBaNPI8dmgvbtKOJAxGWplWVtf3E/8x9xmy0cILxC7aoGK5jMhw==
-
 "@types/node-horseman@legion44/typed-node-horseman":
   version "3.3.0"
   resolved "https://codeload.github.com/legion44/typed-node-horseman/tar.gz/ed55a164c2cf3964726450ff00d5eba97864d11e"
